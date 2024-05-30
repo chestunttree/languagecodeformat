@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import langDB from './langDB';
-import { LANG_MAP, LanguageMap, UNIQUE_ID } from './utils';
+import { LANG_MAP, LanguageMap, UNIQUE_ID, getLangMap, langMapInit, setLangMap } from './utils';
 
 
 
 export function activate(context: vscode.ExtensionContext) {
 
-	const codeMap = context.globalState.get<LanguageMap>(LANG_MAP);
-	if (!codeMap) context.globalState.update(LANG_MAP, new Map());
+	const codeMap = getLangMap(context);
+	if (!codeMap) langMapInit(context);
 	let disposable = vscode.commands.registerCommand('languagecodeformat.replace', async () => {
 		console.log(context.globalState.get(UNIQUE_ID))
 
@@ -19,7 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log(select, document);
 		if (!select || !document || !originText) return;
 		let [newCodeId, newCodeCount] = getCodeId();
-		const langMap = context.globalState.get<LanguageMap>(LANG_MAP);
+		const langMap = getLangMap(context);
 		if (!langMap) return;
 		let likeCodePicks: vscode.QuickPickItem[] = [];
 		langMap.forEach((item, key) => {
@@ -40,17 +40,17 @@ export function activate(context: vscode.ExtensionContext) {
 			editBuilder.replace(select, newCodeId);
 			if (likeCodePicks.length) return;
 			langMap.set(newCodeId, [originText]);
-			context.globalState.update(LANG_MAP, langMap);
+			setLangMap(langMap, context);
 			context.globalState.update(UNIQUE_ID, newCodeCount);
 		})
 	});
 	let disposable2 = langDB(context);
 	let disposable3 = vscode.commands.registerCommand('languagecodeformat.clear', async () => {
-		context.globalState.update(LANG_MAP, new Map());
+		langMapInit(context);
 		context.globalState.update(UNIQUE_ID, undefined);
 	});
-
-	context.subscriptions.push(disposable, disposable2);
+	vscode.window.setStatusBarMessage('插件启动')
+	context.subscriptions.push(disposable, disposable2, disposable3);
 
 	function getCodeId(targetCount?: number): [string, number] {
 		let count = targetCount || context.globalState.get<number>(UNIQUE_ID);
@@ -60,7 +60,7 @@ export function activate(context: vscode.ExtensionContext) {
 		} else {
 			count++;
 		}
-		let languageIdMap = context.globalState.get<LanguageMap>(LANG_MAP);
+		let languageIdMap = getLangMap(context);
 		const key = codeIdTpl(count);
 		if (languageIdMap?.has(key)) return getCodeId(count);
 		return [key, count];

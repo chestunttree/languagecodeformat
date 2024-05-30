@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { LANG_MAP, LanguageMap, UNIQUE_ID } from './utils';
+import { LANG_MAP, LanguageMap, UNIQUE_ID, getLangMap } from './utils';
 
 const tbColumn = [
   {
@@ -96,18 +96,37 @@ export default function (context: vscode.ExtensionContext) {
         retainContextWhenHidden: true
       }
     );
-    const mapData = context.globalState.get<LanguageMap>(LANG_MAP);
+    const mapData = getLangMap(context);
     const htmlTheme = `--bs-body-bg: ${bgColor};`;
-    if(!mapData || !mapData.size) {
+    if (!mapData || !mapData.size) {
       panel.webview.html = getWebviewContent(`
         <div class="alert alert-dark" role="alert" style="margin: 30px 0;">
           暂无数据
         </div>
-      `,  htmlTheme);
+      `, htmlTheme);
       return;
     };
-    
-    panel.webview.html = getWebviewContent(table(tbColumn, mockData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
+    let tbCol: Record<string, TableColumn> = {};
+    let tbData: Record<string, string>[] = [];
+    let maxCol = 2;
+    mapData.forEach((item, key) => {
+      tbData.push({
+        code: key,
+        ...item.reduce((r, i, k) => {
+          if (k + 1 > maxCol) maxCol = k + 1;
+          if (!tbCol[k]) tbCol[k] = { label: `col-${k + 1}`, prop: `col-${k + 1}` }
+          return ({ ...r, [`col-${k + 1}`]: i })
+        }, {} as Record<string, any>)
+      })
+    })
+    let tCol = [{ label: 'code', prop: 'code' }, ...Object.values(tbCol)];
+    const tColDiff = maxCol - tCol.length - 1
+    if (tColDiff > 0) tCol = tCol.concat(new Array(tColDiff).fill(1).map((i, k) => ({
+      label: `col-${k + tCol.length}`,
+      prop: `col-${k + tCol.length}`,
+    })))
+
+    panel.webview.html = getWebviewContent(table(tCol, tbData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
     console.log(context.globalState.get(UNIQUE_ID), context.globalState.get(LANG_MAP))
   });
 
