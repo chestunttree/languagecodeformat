@@ -3,15 +3,16 @@ import langDB from './langDB';
 import { LANG_MAP, LanguageMap, UNIQUE_ID, getLangMap, langMapInit, setLangMap } from './utils';
 
 
-
+const codeIdTplRegExp = new RegExp('%code%', 'g');
 export function activate(context: vscode.ExtensionContext) {
 
 	const codeMap = getLangMap(context);
 	if (!codeMap) langMapInit(context);
+
 	let disposable = vscode.commands.registerCommand('languagecodeformat.replace', async () => {
 		console.log(context.globalState.get(UNIQUE_ID))
-
 		vscode.window.showInformationMessage('Hello World from languageCodeFormat!');
+		const codeTpl = getReplaceTpl();
 		const editor = vscode.window.activeTextEditor;
 		const select = editor?.selection;
 		const document = editor?.document;
@@ -31,14 +32,28 @@ export function activate(context: vscode.ExtensionContext) {
 				});
 			}
 		});
+		let selectCodeId: string | undefined;
 		if (likeCodePicks.length) {
-			let pick = await vscode.window.showQuickPick<vscode.QuickPickItem>(likeCodePicks);
-			if (pick) newCodeId = pick.label;
+			const createNewCodeIdPick: vscode.QuickPickItem = { label: 'create a new item', iconPath: new vscode.ThemeIcon('add') };
+			const divider: vscode.QuickPickItem = { label: '', kind: vscode.QuickPickItemKind.Separator };
+			let pick = await vscode.window.showQuickPick<vscode.QuickPickItem>([
+				...likeCodePicks,
+				divider,
+				createNewCodeIdPick
+			]);
+			/** 未选代表不改了 */
+			if (!pick) return;
+			selectCodeId = pick.label !== 'create a new item' ? pick.label : undefined;
+			if (selectCodeId) {
+				newCodeId = selectCodeId;
+			}
 		}
-
 		editor.edit((editBuilder) => {
-			editBuilder.replace(select, newCodeId);
-			if (likeCodePicks.length) return;
+			editBuilder.replace(select, 
+				/** 判断使用替换模板 */
+				codeTpl ? codeTpl.replace(codeIdTplRegExp, newCodeId) : newCodeId
+			);
+			if (selectCodeId) return;
 			langMap.set(newCodeId, [originText]);
 			setLangMap(langMap, context);
 			context.globalState.update(UNIQUE_ID, newCodeCount);
@@ -49,7 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
 		langMapInit(context);
 		context.globalState.update(UNIQUE_ID, undefined);
 	});
-	vscode.window.setStatusBarMessage('插件启动')
+	vscode.window.setStatusBarMessage('插件启动');
 	context.subscriptions.push(disposable, disposable2, disposable3);
 
 	function getCodeId(targetCount?: number): [string, number] {
@@ -69,6 +84,11 @@ export function activate(context: vscode.ExtensionContext) {
 function codeIdTpl(id: number) {
 	return `ZKLANG${id.toString().padStart(8, '0')}`;
 }
+function getReplaceTpl() {
+	const config = vscode.workspace.getConfiguration('languagecodeformat');
+	return config.get<string>('replaceTpl');
+};
+
 export function deactivate() { }
 
 

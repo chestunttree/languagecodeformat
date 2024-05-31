@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { LANG_MAP, LanguageMap, UNIQUE_ID, getLangMap } from './utils';
+import { LANG_MAP, LanguageMap, UNIQUE_ID, getLangMap, setLangMap } from './utils';
 
 const tbColumn = [
   {
@@ -96,38 +96,100 @@ export default function (context: vscode.ExtensionContext) {
         retainContextWhenHidden: true
       }
     );
-    const mapData = getLangMap(context);
     const htmlTheme = `--bs-body-bg: ${bgColor};`;
-    if (!mapData || !mapData.size) {
-      panel.webview.html = getWebviewContent(`
+    function getTableOptions() {
+      const mapData = getLangMap(context);
+      if (!mapData || !mapData.size) return;
+      let tbCol: Record<string, TableColumn> = {};
+      let tbData: Record<string, string>[] = [];
+      let maxCol = 2;
+      mapData.forEach((item, key) => {
+        tbData.push({
+          code: key,
+          ...item.reduce((r, i, k) => {
+            if (k + 1 > maxCol) maxCol = k + 1;
+            if (!tbCol[k]) tbCol[k] = { label: `col-${k + 1}`, prop: `col-${k + 1}` }
+            return ({ ...r, [`col-${k + 1}`]: i })
+          }, {} as Record<string, any>)
+        });
+      });
+      let tCol = [{ label: 'code', prop: 'code' }, ...Object.values(tbCol)];
+      const tColDiff = maxCol - tCol.length - 1;
+
+      if (tColDiff > 0) tCol = tCol.concat(new Array(tColDiff).fill(1).map((i, k) => ({
+        label: `col-${k + tCol.length}`,
+        prop: `col-${k + tCol.length}`,
+      })))
+      return { tCol, tbData };
+    }
+    const tableOptions = getTableOptions();
+    if (!tableOptions) {
+      return panel.webview.html = getWebviewContent(`
         <div class="alert alert-dark" role="alert" style="margin: 30px 0;">
           暂无数据
         </div>
+    `, htmlTheme);
+    }
+    panel.webview.html = getWebviewContent(table(tableOptions.tCol, tableOptions.tbData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
+    console.log(context.globalState.get(UNIQUE_ID), context.globalState.get(LANG_MAP));
+    const copyCodeMap = async () => {
+      const textToCopy = JSON.stringify(copyDataFormat());
+      await vscode.env.clipboard.writeText(textToCopy);
+      vscode.window.showInformationMessage('已复制到剪切板')
+    }
+    const handleRefresh = () => {
+      const tableOptions = getTableOptions();
+      if (!tableOptions) {
+        return panel.webview.html = getWebviewContent(`
+          <div class="alert alert-dark" role="alert" style="margin: 30px 0;">
+            暂无数据
+          </div>
       `, htmlTheme);
-      return;
-    };
-    let tbCol: Record<string, TableColumn> = {};
-    let tbData: Record<string, string>[] = [];
-    let maxCol = 2;
-    mapData.forEach((item, key) => {
-      tbData.push({
-        code: key,
-        ...item.reduce((r, i, k) => {
-          if (k + 1 > maxCol) maxCol = k + 1;
-          if (!tbCol[k]) tbCol[k] = { label: `col-${k + 1}`, prop: `col-${k + 1}` }
-          return ({ ...r, [`col-${k + 1}`]: i })
-        }, {} as Record<string, any>)
-      })
-    })
-    let tCol = [{ label: 'code', prop: 'code' }, ...Object.values(tbCol)];
-    const tColDiff = maxCol - tCol.length - 1
-    if (tColDiff > 0) tCol = tCol.concat(new Array(tColDiff).fill(1).map((i, k) => ({
-      label: `col-${k + tCol.length}`,
-      prop: `col-${k + tCol.length}`,
-    })))
+      }
+      panel.webview.html = getWebviewContent(table(tableOptions.tCol, tableOptions.tbData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
+    }
+    const handleColEditor = async (msg: any) => {
+      const code = msg.code;
+      const lMap = getLangMap(context);
+      if (!lMap) return;
+      const originVal = lMap?.get(code)
+      if (!originVal) return;
+      const result = await vscode.window.showInputBox({ value: originVal[0] });
+      if (result && result !== originVal[0]) {
+        originVal[0] = result;
+        setLangMap(lMap, context);
+        handleRefresh();
+      }
+    }
+    const copyDataFormat = () => {
+      const res = getTableOptions();
+      if(!res) return {};
+      return res.tbData.reduce((r, { code, ...m }) => ({
+        ...r,
+        [code]: Object.values(m)[0]
+      }), {});
+    }
+    const handleDelete = async (msg: any) => {
+      const code = msg.code;
+      const lMap = getLangMap(context);
+      if (!lMap) return;
+      const result = await vscode.window.showInformationMessage('确定删除? 你的代码我可不会改哦 -_- ', '必须的, 删!', '容我三思');
+      if(result === '容我三思') return;
+      lMap.delete(code);
+      setLangMap(lMap, context);
+      handleRefresh();
+    }
 
-    panel.webview.html = getWebviewContent(table(tCol, tbData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
-    console.log(context.globalState.get(UNIQUE_ID), context.globalState.get(LANG_MAP))
+    panel.webview.onDidReceiveMessage(
+      message => {
+        if (message.command === 'copy') return copyCodeMap();
+        if (message.command === 'refresh') return handleRefresh();
+        if (message.command === 'colEditor') return handleColEditor(message);
+        if (message.command === 'delete') return handleDelete(message);
+      },
+      undefined,
+      context.subscriptions
+    );
   });
 
   function table(columns: TableColumn[], data: Record<string, any>[], theme: { bgColor: string, fontColor: string, borderColor: string, thFontColor: string }) {
@@ -135,15 +197,27 @@ export default function (context: vscode.ExtensionContext) {
     const header = columns.map(({ label }) => `<th scope="col">${label}</th>`);
     const body = data.map((item, index) => `<tr>
       <th scope="row"> ${index} </th>
-      ${columns.map(({ prop }) => `<td> ${item[prop]} </td>`)
+      ${columns.map(({ prop }) => `<td>
+          <div class="${prop}" code="${item.code}"> ${item[prop]} </div>
+        </td>`)
       }
+      <td><button id="delete" type="button" class="btn btn-sm btn-link" code="${item.code}">删除</button></td>
     </tr>`);
-    return (
-      `<table class="table" style="${themeColor}">
+    return (`
+      <div class="padding-10 space-between">
+        <div class="space">
+          <button id="copy" type="button" class="btn btn-sm btn-secondary">复制为JSON</button>
+        </div>
+        <button id="refresh" type="button" class="btn btn-sm btn-light">
+          <svg t="1717126758083" style="width:1em;height:1em;margin-top: -3px;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1670" width="200" height="200"><path d="M921.6 102.4c25.12213333 0 45.53386667 20.34346667 45.53386667 45.53386667V512a45.53386667 45.53386667 0 0 1-91.06773334 0V147.93386667c0-25.1904 20.41173333-45.53386667 45.53386667-45.53386667zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667v364.06613333a45.53386667 45.53386667 0 1 1-91.06773334 0V512c0-25.12213333 20.41173333-45.53386667 45.53386667-45.53386667z" fill="#ababab" p-id="1671"></path><path d="M184.5248 195.92533333A455.13386667 455.13386667 0 0 1 967.13386667 512a45.53386667 45.53386667 0 0 1-91.06773334 0 364.06613333 364.06613333 0 0 0-626.00533333-252.85973333 45.53386667 45.53386667 0 1 1-65.536-63.21493334zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667a364.06613333 364.06613333 0 0 0 616.92586666 262.00746667 45.53386667 45.53386667 0 0 1 63.21493334 65.46773333A455.13386667 455.13386667 0 0 1 56.9344 512c0-25.12213333 20.34346667-45.53386667 45.4656-45.53386667z" fill="#ababab" p-id="1672"></path></svg>
+        </button>
+      </div>
+      <table class="table" style="${themeColor}">
         <thead>
           <tr>
             <th scope="col"># </th>
             ${header.join(' ')}
+            <th>操作</th>
           </tr>
         </thead>
         <tbody>
@@ -152,6 +226,45 @@ export default function (context: vscode.ExtensionContext) {
       </table>`
     );
   }
+  function EventScript() {
+    return `
+      <script>
+        $(function(){
+          var vscode = acquireVsCodeApi();
+          $(document).on('click', '#copy', function(e){
+            console.log('copy')
+            vscode.postMessage({
+                command: 'copy',
+                text: 'copy to JSON'
+            });
+          });
+          $(document).on('click', '#refresh', function(e){
+            vscode.postMessage({
+                command: 'refresh',
+                text: 'refresh data'
+            });
+          });
+          $(document).on('click', '.col-1', function(e){
+            var code = $(this).attr('code');
+            vscode.postMessage({
+                command: 'colEditor',
+                text: 'col editor',
+                code,
+            });
+          });
+          $(document).on('click', '#delete', function(e){
+            var code = $(this).attr('code');
+            vscode.postMessage({
+                command: 'delete',
+                text: 'col delete',
+                code,
+            });
+          });
+        })
+      </script>
+    `;
+  }
+
   function getWebviewContent(body: string, theme: string) {
     return `<!DOCTYPE html>
         <html lang="en">
@@ -161,9 +274,30 @@ export default function (context: vscode.ExtensionContext) {
             <title>Cat Coding</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/mhDoLbDldZc3qpsJHpLogda//BVZbgYuw6kof4u2FrCedxOtgRZDTHgHUhOCVim" crossorigin="anonymous"></script>
-        </head>
+            <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+            <style>
+              .space-between {
+                display: flex;
+                gap: 1em;
+                justify-content: space-between;
+                align-items: center;
+              }
+              .space {
+                display: inline-flex;
+                gap: 1em;
+                align-items: center;
+              }
+              .padding-10 {
+                padding: 10px;
+              }
+              .col-1:hover {
+                text-shadow: var(--bs-gray-200) 1px 0 10px;
+              }
+            </style>
+          </head>
         <body style="${theme}">
             ${body}
+            ${EventScript()}
         </body>
         </html>`;
   }
