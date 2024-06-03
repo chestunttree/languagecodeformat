@@ -149,8 +149,8 @@ export default function (context: vscode.ExtensionContext) {
     panel.webview.html = getWebviewContent(table(tableOptions.tCol, tableOptions.tbData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
     pageEvent();
     function pageEvent() {
-      const copyCodeMap = async () => {
-        const textToCopy = JSON.stringify(copyDataFormat());
+      const copyCodeMap = async (msg: any) => {
+        const textToCopy = JSON.stringify(copyDataFormat(msg.copyIndex));
         await vscode.env.clipboard.writeText(textToCopy);
         vscode.window.showInformationMessage('已复制到剪切板')
       }
@@ -192,12 +192,12 @@ export default function (context: vscode.ExtensionContext) {
           handleRefresh();
         }
       }
-      const copyDataFormat = () => {
+      const copyDataFormat = (copyIndex = 0) => {
         const res = getTableOptions();
         if(!res) return {};
         return res.tbData.reduce((r, { code, ...m }) => ({
           ...r,
-          [code]: Object.values(m)[0]
+          [code]: Object.values(m)[copyIndex]
         }), {});
       }
       const handleDelete = async (msg: any) => {
@@ -254,7 +254,7 @@ export default function (context: vscode.ExtensionContext) {
   
       panel.webview.onDidReceiveMessage(
         message => {
-          if (message.command === 'copy') return copyCodeMap();
+          if (message.command === 'copy') return copyCodeMap(message);
           if (message.command === 'refresh') return handleRefresh();
           if (message.command === 'colEditor') return handleColEditor(message);
           if (message.command === 'delete') return handleDelete(message);
@@ -267,8 +267,10 @@ export default function (context: vscode.ExtensionContext) {
   });
 
   function table(columns: TableColumn[], data: Record<string, any>[], theme: { bgColor: string, fontColor: string, borderColor: string, thFontColor: string }) {
-    const themeColor = `--bs-border-color: ${theme.borderColor};--bs-table-color: ${theme.fontColor};`
-    const header = columns.map(({ label }) => `<th scope="col">${label}</th>`);
+    const themeColor = `--bs-border-color: ${theme.borderColor};--bs-table-color: ${theme.fontColor};`;
+    const header = columns.map(({ label },index) => `<th scope="col">${label} ${
+      index > 0 ? `<a class="copy-item" copy-index="${index-1}" href="javascript:;">${ CopyIcon() }</a>`: ''
+    }</th>`);
     const body = data.map((item, index) => `<tr>
       <th scope="row"> ${index} </th>
       ${columns.map(({ prop }) => `<td class="column-item">
@@ -277,22 +279,20 @@ export default function (context: vscode.ExtensionContext) {
       }
       <td><button id="delete" type="button" class="btn btn-sm btn-secondary" code="${item.code}">删除</button></td>
     </tr>`);
+    //<button id="copy" class="btn btn-sm btn-secondary" >复制为JSON</button>
     return (`
-        <div class="space">
-      <div class="padding-10 space-between">
-          <button id="copy" class="btn btn-sm btn-secondary" >复制为JSON</button>
-          <div class="dropdown">
-            <button type="button" type="button" data-bs-toggle="dropdown" aria-expanded="false" class="btn btn-sm btn-light dropdown-toggle">
-              导入JSON
-            </button>
-            <ul class="dropdown-menu export-dorpdown-list">
-              <li><a class="dropdown-item export-dropdown" export-type="1" href="javascript:;">解析i18n messagea 数据</a></li>
-              <li><a class="dropdown-item export-dropdown" export-type="2" href="javascript:;">
-                导入字典
-                <div style="font-size: 12px;">[code: string，msg1: string，msg2: string, ...]</div>
-              </a></li>
-            </ul>
-          </div>
+      <div class="space padding-10">
+        <div class="dropdown">
+          <button type="button" type="button" data-bs-toggle="dropdown" aria-expanded="false" class="btn btn-sm btn-light dropdown-toggle">
+            导入JSON
+          </button>
+          <ul class="dropdown-menu export-dorpdown-list">
+            <li><a class="dropdown-item export-dropdown" export-type="1" href="javascript:;">解析i18n messagea 数据</a></li>
+            <li><a class="dropdown-item export-dropdown" export-type="2" href="javascript:;">
+              导入字典
+              <div style="font-size: 12px;">[code: string，msg1: string，msg2: string, ...]</div>
+            </a></li>
+          </ul>
         </div>
         <button id="refresh" type="button" class="btn btn-sm btn-light">
           <svg t="1717126758083" style="width:1em;height:1em;margin-top: -3px;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1670" width="200" height="200"><path d="M921.6 102.4c25.12213333 0 45.53386667 20.34346667 45.53386667 45.53386667V512a45.53386667 45.53386667 0 0 1-91.06773334 0V147.93386667c0-25.1904 20.41173333-45.53386667 45.53386667-45.53386667zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667v364.06613333a45.53386667 45.53386667 0 1 1-91.06773334 0V512c0-25.12213333 20.41173333-45.53386667 45.53386667-45.53386667z" fill="#ababab" p-id="1671"></path><path d="M184.5248 195.92533333A455.13386667 455.13386667 0 0 1 967.13386667 512a45.53386667 45.53386667 0 0 1-91.06773334 0 364.06613333 364.06613333 0 0 0-626.00533333-252.85973333 45.53386667 45.53386667 0 1 1-65.536-63.21493334zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667a364.06613333 364.06613333 0 0 0 616.92586666 262.00746667 45.53386667 45.53386667 0 0 1 63.21493334 65.46773333A455.13386667 455.13386667 0 0 1 56.9344 512c0-25.12213333 20.34346667-45.53386667 45.4656-45.53386667z" fill="#ababab" p-id="1672"></path></svg>
@@ -317,10 +317,11 @@ export default function (context: vscode.ExtensionContext) {
       <script>
         $(function(){
           var vscode = acquireVsCodeApi();
-          $(document).on('click', '#copy', function(e){
+          $(document).on('click', '.copy-item', function(e){
             vscode.postMessage({
                 command: 'copy',
-                text: 'copy to JSON'
+                text: 'copy to JSON',
+                copyIndex: $(this).attr('copy-index')
             });
           });
           $(document).on('click', '.export-dropdown', function(e){
@@ -405,5 +406,13 @@ export default function (context: vscode.ExtensionContext) {
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
         </body>
         </html>`;
+  }
+  function CopyIcon() {
+    return `
+      <svg t="1717417569103" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2492" width="1em" height="1em">
+        <path d="M263.2 761.3H145.4c-45.5 0-82.5-37-82.5-82.5V150.6c0-45.5 37-82.5 82.5-82.5h488.9c45.5 0 82.5 37 82.5 82.5v70.1c0 11-9 20-20 20s-20-9-20-20v-70.1c0-23.4-19-42.5-42.5-42.5H145.4c-23.4 0-42.5 19-42.5 42.5v528.3c0 23.4 19 42.5 42.5 42.5h117.8c11 0 20 9 20 20s-8.9 19.9-20 19.9z" fill="#ababab" p-id="2493"></path>
+        <path d="M897.2 971.1H400.9c-42.5 0-77.2-34.6-77.2-77.2V358.4c0-42.5 34.6-77.2 77.2-77.2h496.4c42.5 0 77.2 34.6 77.2 77.2V894c-0.1 42.5-34.7 77.1-77.3 77.1zM400.9 321.2c-20.5 0-37.2 16.7-37.2 37.2V894c0 20.5 16.7 37.2 37.2 37.2h496.4c20.5 0 37.2-16.7 37.2-37.2V358.4c0-20.5-16.7-37.2-37.2-37.2H400.9z" fill="#ababab" p-id="2494"></path>
+      </svg>
+    `
   }
 }
