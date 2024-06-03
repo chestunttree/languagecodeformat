@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import langDB from './langDB';
-import { LANG_MAP, LanguageMap, UNIQUE_ID, getLangMap, langMapInit, setLangMap } from './utils';
+import { LANG_MAP, LanguageMap, UNIQUE_ID, getCodeId, getLangMap, langMapInit, setLangMap } from './utils';
 
 
 const codeIdTplRegExp = new RegExp('%code%', 'g');
@@ -17,9 +17,8 @@ export function activate(context: vscode.ExtensionContext) {
 		const select = editor?.selection;
 		const document = editor?.document;
 		const originText = document?.getText(select);
-		console.log(select, document);
 		if (!select || !document || !originText) return;
-		let [newCodeId, newCodeCount] = getCodeId();
+		let [newCodeId, newCodeCount] = getCodeId(context);
 		const langMap = getLangMap(context);
 		if (!langMap) return;
 		let likeCodePicks: vscode.QuickPickItem[] = [];
@@ -67,22 +66,6 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.window.setStatusBarMessage('插件启动');
 	context.subscriptions.push(disposable, disposable2, disposable3);
 
-	function getCodeId(targetCount?: number): [string, number] {
-		let count = targetCount || context.globalState.get<number>(UNIQUE_ID);
-		if (!count) {
-			count = 1;
-			// context.globalState.update(UNIQUE_ID, count);
-		} else {
-			count++;
-		}
-		let languageIdMap = getLangMap(context);
-		const key = codeIdTpl(count);
-		if (languageIdMap?.has(key)) return getCodeId(count);
-		return [key, count];
-	}
-}
-function codeIdTpl(id: number) {
-	return `ZKLANG${id.toString().padStart(8, '0')}`;
 }
 function getReplaceTpl() {
 	const config = vscode.workspace.getConfiguration('languagecodeformat');
