@@ -15,7 +15,7 @@ export const UNIQUE_ID = 'langeuagecodeformat.idCount';
 export const LANG_MAP = 'langeuagecodeformat.map';
 
 export const getLangMap = (context: vscode.ExtensionContext) => {
-    const langState = context.globalState.get<LanguageMapArr>(LANG_MAP);
+    const langState = context.workspaceState.get<LanguageMapArr>(LANG_MAP);
     if (langState) {
         if (langState instanceof Array) {
             return new Map(langState);
@@ -27,16 +27,16 @@ export const getLangMap = (context: vscode.ExtensionContext) => {
 };
 export const setLangMap = (langMap: LanguageMap, context: vscode.ExtensionContext) => {
     const langMapArr = Array.from(langMap);
-    context.globalState.update(LANG_MAP, langMapArr);
+    context.workspaceState.update(LANG_MAP, langMapArr);
 }
-export const langMapInit = (context: vscode.ExtensionContext) => context.globalState.update(LANG_MAP, [])
+export const langMapInit = (context: vscode.ExtensionContext) => context.workspaceState.update(LANG_MAP, [])
 
 
 export function getCodeId(context: vscode.ExtensionContext, targetCount?: number): [string, number] {
-    let count = targetCount || context.globalState.get<number>(UNIQUE_ID);
+    let count = targetCount || context.workspaceState.get<number>(UNIQUE_ID);
     if (!count) {
         count = 1;
-        // context.globalState.update(UNIQUE_ID, count);
+        // context.workspaceState.update(UNIQUE_ID, count);
     } else {
         count++;
     }

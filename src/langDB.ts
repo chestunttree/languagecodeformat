@@ -244,7 +244,7 @@ export default function (context: vscode.ExtensionContext) {
             }else {
               let [newCodeId, newCodeCount] = getCodeId(context);
               lMap.set(newCodeId, msgs);
-              context.globalState.update(UNIQUE_ID, newCodeCount);
+              context.workspaceState.update(UNIQUE_ID, newCodeCount);
             }
           })
         }

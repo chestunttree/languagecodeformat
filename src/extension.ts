@@ -10,7 +10,7 @@ export function activate(context: vscode.ExtensionContext) {
 	if (!codeMap) langMapInit(context);
 
 	let disposable = vscode.commands.registerCommand('languagecodeformat.replace', async () => {
-		console.log(context.globalState.get(UNIQUE_ID))
+		console.log(context.workspaceState.get(UNIQUE_ID))
 		vscode.window.showInformationMessage('Hello World from languageCodeFormat!');
 		const codeTpl = getReplaceTpl();
 		const editor = vscode.window.activeTextEditor;
@@ -55,13 +55,13 @@ export function activate(context: vscode.ExtensionContext) {
 			if (selectCodeId) return;
 			langMap.set(newCodeId, [originText]);
 			setLangMap(langMap, context);
-			context.globalState.update(UNIQUE_ID, newCodeCount);
+			context.workspaceState.update(UNIQUE_ID, newCodeCount);
 		})
 	});
 	let disposable2 = langDB(context);
 	let disposable3 = vscode.commands.registerCommand('languagecodeformat.clear', async () => {
 		langMapInit(context);
-		context.globalState.update(UNIQUE_ID, undefined);
+		context.workspaceState.update(UNIQUE_ID, undefined);
 	});
 	vscode.window.setStatusBarMessage('插件启动');
 	context.subscriptions.push(disposable, disposable2, disposable3);
