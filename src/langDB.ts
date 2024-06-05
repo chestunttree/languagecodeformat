@@ -16,68 +16,6 @@ const tbColumn = [
     prop: 'languageldentifiers'
   },
 ]
-const mockData = [
-  {
-    "id": 15000020040427514,
-    "languageCode": "lrhpijicu",
-    "languageName": "他斯千各易系能酸车西群日主应产马。",
-    "languageldentifiers": "Bdb Cgtdeiu Vqtrm Lbijffn Wmmbpim"
-  },
-  {
-    "id": 120000201010267380,
-    "languageCode": "jkrtwckpis",
-    "languageName": "题加养置道约情红根比素口维要布反便。",
-    "languageldentifiers": "Utcay Nlsov Ssdjd Przftvud Jsksbl"
-  },
-  {
-    "id": 420000200004025660,
-    "languageCode": "sttm",
-    "languageName": "权史者展强连心次当则科选报目们。",
-    "languageldentifiers": "Onkfyv Yyvd Oyrbnf Xwqjnfear Vsc"
-  },
-  {
-    "id": 510000198705031400,
-    "languageCode": "pcx",
-    "languageName": "术安矿成斗红毛已行应流只象属结样根。",
-    "languageldentifiers": "Fnubqkckc Flmjqp Dduaqq Xftutb Oqjv Qzfec"
-  },
-  {
-    "id": 35000020211217444,
-    "languageCode": "jjgcxbx",
-    "languageName": "支如性米品之在须例义作统。",
-    "languageldentifiers": "Auitdo Thbwb Baeb Yxtf"
-  },
-  {
-    "id": 530000201603137860,
-    "languageCode": "cujp",
-    "languageName": "共第区六步设到照方边己求容火。",
-    "languageldentifiers": "Xdujhzlt Xreo Kbawuzxsmb Ugimsgu"
-  },
-  {
-    "id": 500000198905242700,
-    "languageCode": "knlf",
-    "languageName": "口王重候数志同干界出如周深使给。",
-    "languageldentifiers": "Upjes Wjskukpsf Itquutdqh Mwsohu Ebwh"
-  },
-  {
-    "id": 350000197410118900,
-    "languageCode": "qmpv",
-    "languageName": "电百便六领引照变各着重花采设层。",
-    "languageldentifiers": "Upa Hterhqayx Sqxw Epxu Kxm"
-  },
-  {
-    "id": 640000199207232600,
-    "languageCode": "bofe",
-    "languageName": "低人置定总数线广向般影图号军成。",
-    "languageldentifiers": "Hvdeqtur Qkxmocgs Jlflloyo Hxquyyoec Dlidwtosq Mypmxt"
-  },
-  {
-    "id": 330000197607115260,
-    "languageCode": "sfttv",
-    "languageName": "自走般亲口单较所当月体式展军。",
-    "languageldentifiers": "Gnxnq Nunkzxx Wtzyuqayg Rmsdyclcu Iekgyb Emm Akle"
-  }
-]
 type TableColumn = (typeof tbColumn)[0];
 export default function (context: vscode.ExtensionContext) {
   return vscode.commands.registerCommand('languagecodeformat.db', async () => {
@@ -117,10 +55,12 @@ export default function (context: vscode.ExtensionContext) {
       let tCol = [{ label: 'code', prop: 'code' }, ...Object.values(tbCol)];
       const tColDiff = maxCol - tCol.length - 1;
 
-      if (tColDiff > 0) tCol = tCol.concat(new Array(tColDiff).fill(1).map((i, k) => ({
-        label: `column-${k + tCol.length}`,
-        prop: `column-${k + tCol.length}`,
-      })))
+      if (tColDiff > 0) {
+        tCol = tCol.concat(new Array(tColDiff).fill(1).map((i, k) => ({
+          label: `column-${k + tCol.length}`,
+          prop: `column-${k + tCol.length}`,
+        })));
+      }
       return { tCol, tbData };
     }
     const tableOptions = getTableOptions();
@@ -176,8 +116,8 @@ export default function (context: vscode.ExtensionContext) {
               </div>
             </div>
           `, htmlTheme);
-      }
-      panel.webview.html = getWebviewContent(table(tableOptions.tCol, tableOptions.tbData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
+        }
+        panel.webview.html = getWebviewContent(table(tableOptions.tCol, tableOptions.tbData, { bgColor, fontColor, borderColor, thFontColor }), htmlTheme);
       }
       const handleColEditor = async (msg: any) => {
         const code = msg.code;
@@ -194,7 +134,7 @@ export default function (context: vscode.ExtensionContext) {
       }
       const copyDataFormat = (copyIndex = 0) => {
         const res = getTableOptions();
-        if(!res) return {};
+        if (!res) return {};
         return res.tbData.reduce((r, { code, ...m }) => ({
           ...r,
           [code]: Object.values(m)[copyIndex]
@@ -205,43 +145,43 @@ export default function (context: vscode.ExtensionContext) {
         const lMap = getLangMap(context);
         if (!lMap) return;
         const result = await vscode.window.showInformationMessage('确定删除? 你的代码我可不会改哦 -_- ', '必须的, 删!', '容我三思');
-        if(result !== '必须的, 删!') return;
+        if (result !== '必须的, 删!') return;
         lMap.delete(code);
         setLangMap(lMap, context);
         handleRefresh();
       }
-      const handleExport = async(msg:any) => {
+      const handleExport = async (msg: any) => {
         const fileUris = await vscode.window.showOpenDialog({
           title: '选则要导入的JSON文件',
           filters: {
             Json: ["json"]
           }
         });
-        if(!fileUris) return;
-        const [{fsPath}] =  fileUris;
+        if (!fileUris) return;
+        const [{ fsPath }] = fileUris;
         const JsonStr = readFileSync(fsPath, 'utf-8');
         const lMap = getLangMap(context);
-        if(!lMap) return;
+        if (!lMap) return;
         console.log(msg.exportType);
-        if(msg.exportType==='1') {
+        if (msg.exportType === '1') {
           /** 解析i18n messagea 数据解析i18n messagea 数据 */
-          const jsonData:ExportJSONData = JSON.parse(JsonStr);
-          Object.values(jsonData).forEach((modeItem,index,arr)=>{
-            Object.keys(modeItem).forEach((item)=>{
-              const target = lMap.get(item) || []; 
+          const jsonData: ExportJSONData = JSON.parse(JsonStr);
+          Object.values(jsonData).forEach((modeItem, index, arr) => {
+            Object.keys(modeItem).forEach((item) => {
+              const target = lMap.get(item) || [];
               target.push(modeItem[item]);
               lMap.set(item, target);
             })
           })
-        }else if(msg.exportType==='2') {
+        } else if (msg.exportType === '2') {
           /** 导入字典导入字典 */
-          const jsonData:ExportJSONData2 = JSON.parse(JsonStr);
-          jsonData.data.forEach((modeItem)=>{
+          const jsonData: ExportJSONData2 = JSON.parse(JsonStr);
+          jsonData.data.forEach((modeItem) => {
             const [code, ...msgs] = modeItem;
             /**　有就覆盖，没有就生成code */
-            if(code) {
+            if (code) {
               lMap.set(code, msgs)
-            }else {
+            } else {
               let [newCodeId, newCodeCount] = getCodeId(context);
               lMap.set(newCodeId, msgs);
               context.workspaceState.update(UNIQUE_ID, newCodeCount);
@@ -251,12 +191,12 @@ export default function (context: vscode.ExtensionContext) {
         setLangMap(lMap, context);
         handleRefresh();
       };
-      const handleShowSearch = async (msg:any) => {
-        const search = await vscode.window.showInputBox({title: 'Cell Search'});
-        if(!search || !search.trim()) return;
+      const handleShowSearch = async (msg: any) => {
+        const search = await vscode.window.showInputBox({ title: 'Cell Search' });
+        if (!search || !search.trim()) return;
         panel.webview.postMessage({ command: 'findCell', search });
       }
-  
+
       panel.webview.onDidReceiveMessage(
         message => {
           if (message.command === 'copy') return copyCodeMap(message);
@@ -278,9 +218,8 @@ export default function (context: vscode.ExtensionContext) {
       `--bs-body-color: ${theme.fontColor};`,
       `--bs-border-color: ${theme.borderColor};`,
     ].join('');
-    const header = columns.map(({ label },index) => `<th scope="col">${label} ${
-      index > 0 ? `<a class="copy-item" copy-index="${index-1}" href="javascript:;">${ CopyIcon() }</a>`: ''
-    }</th>`);
+    const header = columns.map(({ label }, index) => `<th scope="col">${label} ${index > 0 ? `<a class="copy-item" copy-index="${index - 1}" href="javascript:;">${CopyIcon()}</a>` : ''
+      }</th>`);
     const body = data.map((item, index) => `<tr>
       <th scope="row"> ${index} </th>
       ${columns.map(({ prop }) => `<td class="column-item">
