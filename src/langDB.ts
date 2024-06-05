@@ -251,6 +251,11 @@ export default function (context: vscode.ExtensionContext) {
         setLangMap(lMap, context);
         handleRefresh();
       };
+      const handleShowSearch = async (msg:any) => {
+        const search = await vscode.window.showInputBox({title: 'Cell Search'});
+        if(!search || !search.trim()) return;
+        panel.webview.postMessage({ command: 'findCell', search });
+      }
   
       panel.webview.onDidReceiveMessage(
         message => {
@@ -259,6 +264,7 @@ export default function (context: vscode.ExtensionContext) {
           if (message.command === 'colEditor') return handleColEditor(message);
           if (message.command === 'delete') return handleDelete(message);
           if (message.command === 'export') return handleExport(message);
+          if (message.command === 'showSearch') return handleShowSearch(message);
         },
         undefined,
         context.subscriptions
@@ -267,7 +273,11 @@ export default function (context: vscode.ExtensionContext) {
   });
 
   function table(columns: TableColumn[], data: Record<string, any>[], theme: { bgColor: string, fontColor: string, borderColor: string, thFontColor: string }) {
-    const themeColor = `--bs-border-color: ${theme.borderColor};--bs-table-color: ${theme.fontColor};`;
+    const themeColor = [
+      `--bs-table-color: ${theme.fontColor};`,
+      `--bs-body-color: ${theme.fontColor};`,
+      `--bs-border-color: ${theme.borderColor};`,
+    ].join('');
     const header = columns.map(({ label },index) => `<th scope="col">${label} ${
       index > 0 ? `<a class="copy-item" copy-index="${index-1}" href="javascript:;">${ CopyIcon() }</a>`: ''
     }</th>`);
@@ -281,35 +291,43 @@ export default function (context: vscode.ExtensionContext) {
     </tr>`);
     //<button id="copy" class="btn btn-sm btn-secondary" >复制为JSON</button>
     return (`
-      <div class="space padding-10">
-        <div class="dropdown">
-          <button type="button" type="button" data-bs-toggle="dropdown" aria-expanded="false" class="btn btn-sm btn-light dropdown-toggle">
-            导入JSON
+      <div class="list-wrapper">
+        <div class="space padding-10">
+          <div class="dropdown">
+            <button type="button" type="button" data-bs-toggle="dropdown" aria-expanded="false" class="btn btn-sm btn-secondary dropdown-toggle">
+              导入JSON
+            </button>
+            <ul class="dropdown-menu export-dorpdown-list">
+              <li><a class="dropdown-item export-dropdown" export-type="1" href="javascript:;">解析i18n messagea 数据</a></li>
+              <li><a class="dropdown-item export-dropdown" export-type="2" href="javascript:;">
+                导入字典
+                <div style="font-size: 12px;">[code: string，msg1: string，msg2: string, ...]</div>
+              </a></li>
+            </ul>
+          </div>
+          <button id="refresh" type="button" class="btn btn-sm btn-secondary">
+            <svg t="1717126758083" style="width:1em;height:1em;margin-top: -3px;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1670" width="200" height="200"><path d="M921.6 102.4c25.12213333 0 45.53386667 20.34346667 45.53386667 45.53386667V512a45.53386667 45.53386667 0 0 1-91.06773334 0V147.93386667c0-25.1904 20.41173333-45.53386667 45.53386667-45.53386667zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667v364.06613333a45.53386667 45.53386667 0 1 1-91.06773334 0V512c0-25.12213333 20.41173333-45.53386667 45.53386667-45.53386667z" fill="#ababab" p-id="1671"></path><path d="M184.5248 195.92533333A455.13386667 455.13386667 0 0 1 967.13386667 512a45.53386667 45.53386667 0 0 1-91.06773334 0 364.06613333 364.06613333 0 0 0-626.00533333-252.85973333 45.53386667 45.53386667 0 1 1-65.536-63.21493334zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667a364.06613333 364.06613333 0 0 0 616.92586666 262.00746667 45.53386667 45.53386667 0 0 1 63.21493334 65.46773333A455.13386667 455.13386667 0 0 1 56.9344 512c0-25.12213333 20.34346667-45.53386667 45.4656-45.53386667z" fill="#ababab" p-id="1672"></path></svg>
           </button>
-          <ul class="dropdown-menu export-dorpdown-list">
-            <li><a class="dropdown-item export-dropdown" export-type="1" href="javascript:;">解析i18n messagea 数据</a></li>
-            <li><a class="dropdown-item export-dropdown" export-type="2" href="javascript:;">
-              导入字典
-              <div style="font-size: 12px;">[code: string，msg1: string，msg2: string, ...]</div>
-            </a></li>
-          </ul>
+          <button id="search" type="button" class="search-submit btn btn-sm btn-secondary">
+            搜索
+          </button>
         </div>
-        <button id="refresh" type="button" class="btn btn-sm btn-light">
-          <svg t="1717126758083" style="width:1em;height:1em;margin-top: -3px;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1670" width="200" height="200"><path d="M921.6 102.4c25.12213333 0 45.53386667 20.34346667 45.53386667 45.53386667V512a45.53386667 45.53386667 0 0 1-91.06773334 0V147.93386667c0-25.1904 20.41173333-45.53386667 45.53386667-45.53386667zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667v364.06613333a45.53386667 45.53386667 0 1 1-91.06773334 0V512c0-25.12213333 20.41173333-45.53386667 45.53386667-45.53386667z" fill="#ababab" p-id="1671"></path><path d="M184.5248 195.92533333A455.13386667 455.13386667 0 0 1 967.13386667 512a45.53386667 45.53386667 0 0 1-91.06773334 0 364.06613333 364.06613333 0 0 0-626.00533333-252.85973333 45.53386667 45.53386667 0 1 1-65.536-63.21493334zM102.4 466.46613333c25.12213333 0 45.53386667 20.41173333 45.53386667 45.53386667a364.06613333 364.06613333 0 0 0 616.92586666 262.00746667 45.53386667 45.53386667 0 0 1 63.21493334 65.46773333A455.13386667 455.13386667 0 0 1 56.9344 512c0-25.12213333 20.34346667-45.53386667 45.4656-45.53386667z" fill="#ababab" p-id="1672"></path></svg>
-        </button>
+        <div class="export-list">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col"># </th>
+                ${header.join(' ')}
+                <th style="width:70px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${body.join(' ')}
+            </tbody>
+          </table>
+        </div>
       </div>
-      <table class="table" style="${themeColor}">
-        <thead>
-          <tr>1
-            <th scope="col"># </th>
-            ${header.join(' ')}
-            <th style="width:70px;">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${body.join(' ')}
-        </tbody>
-      </table>`
+      `
     );
   }
   function EventScript() {
@@ -354,7 +372,27 @@ export default function (context: vscode.ExtensionContext) {
                 code,
             });
           });
-        })
+          $(document).on('click', '.search-submit', function(){
+            console.log('search-submit')
+            vscode.postMessage({
+                command: 'showSearch',
+            });
+          });
+          $(document).on('click', '#search', function(){
+            console.log('search-submit')
+            vscode.postMessage({
+                command: 'showSearch',
+            });
+          });
+
+          window.addEventListener('message', event => {
+            var message = event.data; // The JSON data our extension sent
+            if(message.command === 'findCell') {
+              console.log(message.search);
+              var table = $('table').find
+            }
+          });
+        });
       </script>
     `;
   }
@@ -395,12 +433,21 @@ export default function (context: vscode.ExtensionContext) {
               td>div {
                 width: 100%;
               }
-              .export-dorpdown-list {
-                background: #ffffff;
+              .list-wrapper {
+                height: 100vh;
+                display: flex;
+                flex-direction: column;
+              }
+              .list-wrapper .export-list {
+                flex: 1;
+                overflow: hidden auto;
+              }
+              .list-wrapper .form-control {
+                background-color: transparent;
               }
             </style>
           </head>
-        <body style="${theme}">
+        <body style="${theme}" data-bs-theme="dark" >
             ${body}
             ${EventScript()}
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

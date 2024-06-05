@@ -2,7 +2,7 @@
   "name": "languagecodeformat",
   "displayName": "languageCodeFormat",
   "description": "将提取文本,换成languageCodeID",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "engines": {
     "vscode": "^1.89.0"
   },
@@ -26,6 +26,10 @@
       {
         "command": "languagecodeformat.clear",
         "title": "codeMap db clear"
+      },
+      {
+        "command": "languagecodeformat.setCount",
+        "title": "codeMap set countId"
       }
     ],
     "menus": {

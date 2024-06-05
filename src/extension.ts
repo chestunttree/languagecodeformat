@@ -63,8 +63,18 @@ export function activate(context: vscode.ExtensionContext) {
 		langMapInit(context);
 		context.workspaceState.update(UNIQUE_ID, undefined);
 	});
+	let disposable4 = vscode.commands.registerCommand('languagecodeformat.setCount', async () => {
+		const countId = context.workspaceState.get<number>(UNIQUE_ID);
+		const newCoundId = await vscode.window.showInputBox({
+			title: '当前自增ID设置',
+			value: String(countId)
+		});
+		if(newCoundId && !Number.isNaN(Number(newCoundId))) {
+			context.workspaceState.update(UNIQUE_ID, newCoundId);
+		}
+	});
 	vscode.window.setStatusBarMessage('插件启动');
-	context.subscriptions.push(disposable, disposable2, disposable3);
+	context.subscriptions.push(disposable, disposable2, disposable3, disposable4);
 
 }
 function getReplaceTpl() {
