@@ -11,7 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
 	if (!codeMap) langMapInit(context);
 
 	let disposable = vscode.commands.registerCommand('languagecodeformat.replace', async () => {
-		console.log(context.workspaceState.get(UNIQUE_ID))
+		
 		const codeTpl = getReplaceTpl();
 		const editor = vscode.window.activeTextEditor;
 		const select = editor?.selection;

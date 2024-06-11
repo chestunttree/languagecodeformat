@@ -16,3 +16,7 @@ Users appreciate release notes as you update your extension.
 ### 1.0.0
 
 为了一碟醋，专门包了顿饺子
+
+### 1.4.0
+
+加入codeLen: refresh、setMode、open

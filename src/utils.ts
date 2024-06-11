@@ -47,5 +47,11 @@ export function getCodeId(context: vscode.ExtensionContext, targetCount?: number
 }
 
 export function codeIdTpl(id: number) {
-return `ZKLANG${id.toString().padStart(8, '0')}`;
+    return `ZKLANG${id.toString().padStart(8, '0')}`;
 }
+export function getLineTargetCode(lineText: string) {
+    const result = lineText.match(codeLenRegExp);
+    if (result) return result;
+    return [] as string[];
+}
+export const codeLenRegExp = new RegExp('ZKLANG\\d{8}', 'g');

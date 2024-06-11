@@ -162,7 +162,7 @@ export default function (context: vscode.ExtensionContext) {
         const JsonStr = readFileSync(fsPath, 'utf-8');
         const lMap = getLangMap(context);
         if (!lMap) return;
-        console.log(msg.exportType);
+        
         if (msg.exportType === '1') {
           /** 解析i18n messagea 数据解析i18n messagea 数据 */
           const jsonData: ExportJSONData = JSON.parse(JsonStr);
@@ -312,13 +312,13 @@ export default function (context: vscode.ExtensionContext) {
             });
           });
           $(document).on('click', '.search-submit', function(){
-            console.log('search-submit')
+            
             vscode.postMessage({
                 command: 'showSearch',
             });
           });
           $(document).on('click', '#search', function(){
-            console.log('search-submit')
+            
             vscode.postMessage({
                 command: 'showSearch',
             });
@@ -327,7 +327,7 @@ export default function (context: vscode.ExtensionContext) {
           window.addEventListener('message', event => {
             var message = event.data; // The JSON data our extension sent
             if(message.command === 'findCell') {
-              console.log(message.search);
+              
               var table = $('table').find
             }
           });
